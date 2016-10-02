@@ -50,7 +50,7 @@ public class TriangleUtils {
 
     public static Double[] getSidesFromString(String[] sides) throws Exception {
         String startErrMsg = "Некорректн(-ая/-ые) длин(-а/-ы): \"";
-        String endErrMsg = "\". Длина должна быть положительным числом.";
+        String endErrMsg = "\". Длина должна быть положительным числом. В числах с плавающей запятой использовать \'.\' вместо \',\'";
         String errSides = "";
         Double[] output = new Double[3];
         for (int i = 0; i < sides.length; i++) {

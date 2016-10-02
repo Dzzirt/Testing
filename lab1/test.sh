@@ -26,6 +26,9 @@ echo "-------"
 java -jar lab1.jar 0 0 0
 echo "-------"
 java -jar lab1.jar -100 -2 -1
+echo "-------"
+java -jar lab1.jar 2,1 2,1 2,1
+
 
 
 
