@@ -1,26 +1,54 @@
-import java.util.regex.Pattern;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
 
 /**
  * Created by Nikita on 14.10.2016.
  */
 public class DeadLinksChecker {
 
-    private final String urlRegex = "^(?:(?:https?|ftp):\\/\\/)(?:\\S+(?::\\S*)?@)?(?:(?!10(?:\\.\\d{1,3}){3})" +
-            "(?!127(?:\\.\\d{1,3}){3})(?!169\\.254(?:\\.\\d{1,3}){2})" +
-            "(?!192\\.168(?:\\.\\d{1,3}){2})(?!172\\.(?:1[6-9]|2\\d|3[0-1])" +
-            "(?:\\.\\d{1,3}){2})(?:[1-9]\\d?|1\\d\\d|2[01]\\d|22[0-3])" +
-            "(?:\\.(?:1?\\d{1,2}|2[0-4]\\d|25[0-5])){2}(?:\\.(?:[1-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-4]))|" +
-            "(?:(?:[a-z0-9]+-?)*[a-z0-9]+)(?:\\.(?:[a-z0-9]+-?)*[a-z0-9]+)*(?:\\.(?:[a-z]{2,})))" +
-            "(?::\\d{2,5})?(?:\\/[^\\s]*)?$";
+    private static ArrayList<String> m_parsedUrls;
+    private static String startUrl;
 
-    public DeadLinksChecker(String url) throws InvalidUrlException {
-        if (!validateUrl(url)) {
-            throw new InvalidUrlException();
+    public static void start(String url, String allOutputFilename, String badOutputFilename) throws IOException {
+        m_parsedUrls = new ArrayList<>();
+        startUrl = url;
+        check(url, allOutputFilename, badOutputFilename);
+    }
+
+    private static void check(String url, String allOutputFilename, String badOutputFilename) throws IOException {
+        if (!m_parsedUrls.contains(url) && url.contains(startUrl)) {
+            m_parsedUrls.add(url);
+            Document doc = Jsoup.connect(url).ignoreContentType(true).get();
+            Elements links = doc.select("[href]");
+            Elements src = doc.select("[src]");
+            links.addAll(src);
+            FileWriter all = new FileWriter(allOutputFilename, true);
+            FileWriter bad = new FileWriter(badOutputFilename, true);
+            for (Element link : links) {
+                String linkStr = link.hasAttr("href") ? link.attr("abs:href") : link.attr("abs:src");
+                if (!linkStr.isEmpty()) {
+                    URL linkUrl = new URL(linkStr);
+                    int statusCode = ((HttpURLConnection) linkUrl.openConnection()).getResponseCode();
+                    System.out.println(statusCode);
+                    all.write(linkStr + " : " + statusCode + "\n");
+                    if (statusCode <= 400) {
+                        check(linkStr, allOutputFilename, badOutputFilename);
+                    } else {
+                        bad.write(linkStr + " : " + statusCode + "\n");
+                    }
+                }
+            }
+            all.close();
+            bad.close();
         }
     }
 
-    private boolean validateUrl(String url) {
-        Pattern p = Pattern.compile(urlRegex);
-        return p.matcher(url).matches();
-    }
 }
