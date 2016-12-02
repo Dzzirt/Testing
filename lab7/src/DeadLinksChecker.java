@@ -9,9 +9,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 
-/**
- * Created by Nikita on 14.10.2016.
- */
 public class DeadLinksChecker {
 
     private static ArrayList<String> m_parsedUrls;
@@ -19,13 +16,20 @@ public class DeadLinksChecker {
 
     public static void start(String url, String allOutputFilename, String badOutputFilename) throws IOException {
         m_parsedUrls = new ArrayList<>();
-        startUrl = url;
+        startUrl = fixUrlString(url);
+        m_parsedUrls.add(startUrl);
         check(url, allOutputFilename, badOutputFilename);
     }
 
+    private static String fixUrlString(String url) {
+        if (!url.endsWith("/")) {
+            url += "/";
+        }
+        return url;
+    }
+
     private static void check(String url, String allOutputFilename, String badOutputFilename) throws IOException {
-        if (!m_parsedUrls.contains(url) && url.contains(startUrl)) {
-            m_parsedUrls.add(url);
+        if (url.contains(startUrl)) {
             Document doc = Jsoup.connect(url).ignoreContentType(true).get();
             Elements links = doc.select("[href]");
             Elements src = doc.select("[src]");
@@ -33,16 +37,15 @@ public class DeadLinksChecker {
             FileWriter all = new FileWriter(allOutputFilename, true);
             FileWriter bad = new FileWriter(badOutputFilename, true);
             for (Element link : links) {
-                String linkStr = link.hasAttr("href") ? link.attr("abs:href") : link.attr("abs:src");
-                if (!linkStr.isEmpty()) {
-                    URL linkUrl = new URL(linkStr);
-                    int statusCode = ((HttpURLConnection) linkUrl.openConnection()).getResponseCode();
-                    System.out.println(statusCode);
-                    all.write(linkStr + " : " + statusCode + "\n");
+                String absLink = getAbsoluteLink(link);
+                int statusCode = getStatusCode(absLink);
+                if (!m_parsedUrls.contains(absLink)) {
+                    m_parsedUrls.add(absLink);
+                    all.write(absLink + " : " + statusCode + "\n");
                     if (statusCode <= 400) {
-                        check(linkStr, allOutputFilename, badOutputFilename);
+                        check(absLink, allOutputFilename, badOutputFilename);
                     } else {
-                        bad.write(linkStr + " : " + statusCode + "\n");
+                        bad.write(absLink + " : " + statusCode + "\n");
                     }
                 }
             }
@@ -51,4 +54,17 @@ public class DeadLinksChecker {
         }
     }
 
+    private static int getStatusCode(String absLink) throws IOException {
+        URL linkUrl = new URL(absLink);
+        return ((HttpURLConnection) linkUrl.openConnection()).getResponseCode();
+    }
+
+    private static String getAbsoluteLink(Element link) {
+        String absLink = link.hasAttr("href") ? link.attr("abs:href") : link.attr("abs:src");
+        String relLink = link.hasAttr("href") ? link.attr("href") : link.attr("src");
+        if (absLink.isEmpty()) {
+            absLink = startUrl + relLink;
+        }
+        return absLink;
+    }
 }

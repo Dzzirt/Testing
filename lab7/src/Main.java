@@ -1,11 +1,8 @@
 import java.io.IOException;
 import java.net.MalformedURLException;
 
-/**
- * Created by Nikita on 14.10.2016.
- */
 public class Main {
-    public static void main(String[] args) throws NotUrlException {
+    public static void main(String[] args) {
         if (args.length != 1) {
             System.out.println("Укажите адрес страницы в качестве параметра. " +
                     "Формат ввода lab7.jar http://path-to-site.com");
